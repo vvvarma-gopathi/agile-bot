@@ -1,6 +1,6 @@
 from fastapi import HTTPException,status
 from auth.models import Users,Roles
-from auth.schemas import UserCreate,UserLogin,MessageResponse,ProfileResponse
+from auth.schemas import UserCreate,UserLogin,MessageResponse,ProfileResponse,SelectUser
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib.hashers.bcrypt import BcryptHasher
@@ -67,4 +67,15 @@ def profile(payload:dict,db):
 async def profile_dash(payload,db):
     user=db.query(Users).filter(Users.id==payload['id']).first()
     role=db.query(Roles).filter(Roles.id==user.role_id).first()
-    return ProfileResponse(user_name=user.user_name,role=role.name)
+    return ProfileResponse(user_name=user.user_name,role=role.name,user_id=user.id)
+
+async def get_users(payload,db):
+    if payload['role_id']!=1 and payload['role_id']!=3:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can add project member')
+    users=db.query(Users).all()
+    if not users:
+        return MessageResponse(message='no users found')
+    results=[]
+    for record in users:
+        results.append(SelectUser(user_name=record.user_name,id=record.id))
+    return results

@@ -30,7 +30,7 @@ from sprints.services import (
 sprint_router = APIRouter(prefix='/sprints', tags=['Sprint Routes'])
 
 
-@sprint_router.post('/create', response_model=SprintResponse, status_code=status.HTTP_201_CREATED)
+@sprint_router.post('/create', response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def create_sprint_route(
 	sprint_details: CreateSprint,
 	payload=Depends(get_current_user),
@@ -39,7 +39,7 @@ async def create_sprint_route(
 	return await create_sprint(sprint_details, payload, db)
 
 
-@sprint_router.put('/update/{sprint_id}', response_model=SprintResponse, status_code=status.HTTP_200_OK)
+@sprint_router.put('/update/{sprint_id}', response_model=MessageResponse, status_code=status.HTTP_200_OK)
 async def update_sprint_route(
 	sprint_id: UUID,
 	sprint_details: UpdateSprint,

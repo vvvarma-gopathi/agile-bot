@@ -2,7 +2,10 @@ from fastapi import APIRouter,status,Depends
 from core.database import get_db
 from projects.schemas import (ProjectResponse,CreateProject,CreatedResponse,MessageResponse,UpdateProject,ProjectMemberResponse,AddProjectMember,WorkResponse)
 from auth.dependencies import get_current_user
-from projects.services import (create_project,get_all_projects,delete_project,updateproject,get_project_by_status,get_project_by_name,add_project_member,get_project_members,get_projectmember_byrole,work_details)
+from projects.services import (create_project,get_all_projects,delete_project,
+                               updateproject,get_project_by_status,get_project_by_name,
+                               add_project_member,get_project_members,get_projectmember_byrole,
+                               work_details,delete_member)
 from uuid import UUID
 
 project_router=APIRouter(prefix='/projects',tags=['Project Routes'])
@@ -47,6 +50,10 @@ async def get_all_project_members(project_id:UUID,payload=Depends(get_current_us
 @project_router.get('/get/projectmember/role/{role}',response_model=list[ProjectMemberResponse]|MessageResponse,status_code=status.HTTP_200_OK)
 async def get_member_byrole(role:str,payload=Depends(get_current_user),db=Depends(get_db)):
     return await get_projectmember_byrole(role,payload,db)
+
+@project_router.delete('/remove/member/{user_id}',response_model=MessageResponse,status_code=status.HTTP_200_OK)
+async def remove_member(user_id,payload=Depends(get_current_user),db=Depends(get_db)):
+    return await delete_member(user_id,payload,db)
 
 @project_router.get('/get/work/details',response_model=WorkResponse,status_code=status.HTTP_200_OK)
 async def work_progress(payload=Depends(get_current_user),db=Depends(get_db)):

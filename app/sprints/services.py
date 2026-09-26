@@ -61,7 +61,7 @@ async def create_sprint(sprint_details: CreateSprint, payload, db):
 	db.add(sprint)
 	db.commit()
 	db.refresh(sprint)
-	return sprint
+	return MessageResponse(message='sprint successfully created...')
 
 #get sprint by id
 async def get_sprints_by_id(search_id,payload,db):
@@ -106,7 +106,7 @@ async def update_sprint(sprint_id: UUID, sprint_details: UpdateSprint, payload, 
 		setattr(sprint, field, value)
 	db.commit()
 	db.refresh(sprint)
-	return sprint
+	return MessageResponse(message='Sprint updated successfully..')
 
 #delete sprint function
 async def delete_sprint(sprint_id: UUID, payload, db):

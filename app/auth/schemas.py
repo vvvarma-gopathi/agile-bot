@@ -37,3 +37,8 @@ class TokenResponse(BaseModel):
 class ProfileResponse(BaseModel):
     user_name:str
     role:str
+    user_id:UUID
+
+class SelectUser(BaseModel):
+    user_name:str
+    id:UUID

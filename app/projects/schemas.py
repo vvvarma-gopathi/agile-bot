@@ -26,6 +26,7 @@ class CreatedResponse(CreateProject):
 class ProjectResponse(CreateProject):
     id:UUID=Field(...,description='unique id of projects')
     created_by:str=Field(...,min_length=3,max_length=225,description='owner name')
+    owner_id:UUID
     name:str=Field(...,max_length=225,min_length=7,description='name of projects')
     description:str=Field(...,min_length=20,description='description of project')
     goal:str=Field(...,min_length=20,description='goal of project')
@@ -42,7 +43,7 @@ class ProjectResponse(CreateProject):
 
 
 class UpdateProject(BaseModel):
-    owner_id:Optional[str]=Field(default=None,max_length=225,min_length=20,description='unique id of users')
+    owner_id:Optional[UUID]=Field(default=None)
     name:Optional[str]=Field(default=None,max_length=225,min_length=7,description='name of projects')
     description:Optional[str]=Field(default=None,min_length=20,description='description of project')
     goal:Optional[str]=Field(default=None,min_length=20,description='goal of project')
@@ -58,6 +59,7 @@ class ProjectMemberResponse(BaseModel):
     id:UUID
     project_id:UUID
     user_id:UUID
+    user_name:Optional[str]
     project_role:str
     joined_at:datetime
     is_active:bool

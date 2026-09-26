@@ -1,6 +1,6 @@
 from fastapi import Depends,status,APIRouter
-from auth.schemas import UserCreate,UserResponse,UserLogin,TokenResponse,MessageResponse,ProfileResponse
-from auth.services import create_user,authenticate_user,profile,profile_dash
+from auth.schemas import UserCreate,UserResponse,UserLogin,TokenResponse,MessageResponse,ProfileResponse,SelectUser
+from auth.services import create_user,authenticate_user,profile,profile_dash,get_users
 from core.database import get_db
 from auth.dependencies import user_form,get_current_user,user_login_form
 from typing import Annotated
@@ -23,3 +23,7 @@ def get_profile(payload:dict=Depends(get_current_user),db=Depends(get_db)):
 @auth_router.get("/profile/dash",response_model=ProfileResponse,status_code=status.HTTP_200_OK)
 async def get_profile_dash(payload:dict=Depends(get_current_user),db=Depends(get_db)):
     return await profile_dash(payload,db)
+
+@auth_router.get('/select/users',response_model=list[SelectUser],status_code=status.HTTP_200_OK)
+async def display_users(payload=Depends(get_current_user),db=Depends(get_db)):
+    return await get_users(payload,db)

@@ -30,7 +30,7 @@ async def create_epic(epic_details:CreateEpic,payload,db):
     db.flush()
     db.commit()
     db.refresh(epic_record)
-    return epic_record
+    return MessageResponse(message='epic created successfully..')
 
 async def update_epic(epic_id:str,epic_details:UpdateEpic,payload,db):
     if payload['role_id']!=1 and payload['role_id']!=3:
@@ -47,7 +47,7 @@ async def update_epic(epic_id:str,epic_details:UpdateEpic,payload,db):
         setattr(epic_record,field,value)
     db.commit()
     db.refresh(epic_record)
-    return epic_record
+    return MessageResponse(message='epic updated successfully.')
 
 async def delete_epic(epic_id:str,payload,db):
     if payload['role_id']!=1 and payload['role_id']!=3:
@@ -93,21 +93,33 @@ async def create_task(task_details:CreateTask,payload,db):
     return task_record
 
 async def update_task(task_id:str,task_details:UpdateTask,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can update tasks..')
     task_record=db.query(Tasks).filter(Tasks.id==task_id).first()
     if not task_record:
         return MessageResponse(message='No Task found to update..')
     updates=task_details.model_dump(exclude_unset=True)
     if not updates:
         return MessageResponse(message='No task fields provided to update..')
-    if 'title' in updates and db.query(Tasks).filter(Tasks.title==updates['title'],Tasks.id!=task_id).first():
-        return MessageResponse(message=f'Task with title "{updates["title"]}" already exists in tasks')
-    for field,value in updates.items():
-        setattr(task_record,field,value)
-    db.commit()
-    db.refresh(task_record)
-    return MessageResponse(message='updated successfully..')
+    if 'status' in updates and len(updates)==1:
+            if payload['role_id'] in (1,3) or task_record.assigned_to:
+                if payload['id']!=task_record.assigned_to and payload['role_id'] not in (1,3):
+                    return MessageResponse(message='only a assigny can change task state')
+                for field,value in updates.items():
+                    setattr(task_record,field,value)
+                db.commit()
+                db.refresh(task_record)
+                return MessageResponse(message='updated task state successfully')
+            else:
+                return MessageResponse(message='only a assigny can change task state')
+    else:
+        if payload['role_id']!=1 and payload['role_id']!=3:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can update tasks..')
+        if 'title' in updates and db.query(Tasks).filter(Tasks.title==updates['title'],Tasks.id!=task_id).first():
+            return MessageResponse(message=f'Task with title "{updates["title"]}" already exists in tasks')
+        for field,value in updates.items():
+            setattr(task_record,field,value)
+        db.commit()
+        db.refresh(task_record)
+        return MessageResponse(message='updated successfully..')
 
 async def display_task(search_id:str,payload,db):
     validate_user(payload)
@@ -135,7 +147,6 @@ async def display_task_sprint(sprint_id,payload,db):
     results=[]
     query=(select(SprintItems.task_id).join(Sprints,Sprints.id==SprintItems.sprint_id).where(Sprints.id==sprint_id))
     tasks_ids=db.execute(query).scalars().all()
-    print(tasks_ids)
     if not tasks_ids:
         return MessageResponse(message='No sprints found!')
     tasks=db.query(Tasks).filter(Tasks.id.in_(tasks_ids)).all()
@@ -145,10 +156,12 @@ async def display_task_sprint(sprint_id,payload,db):
         assigned_name='not assigned'
         if record.assigned_to:
             assigned_name=(db.query(Users).filter(Users.id==record.assigned_to).first()).user_name
-        created_name=db.query(Users).filter(Users.id==record.created_by).first()
+        print(record.created_by)
+        user=db.query(Users).filter(Users.id==record.created_by).first()
+        print(user.user_name)
         results.append(TaskResponse(id=record.id,project_id=record.project_id,user_story_id=record.user_story_id,
                                     title=record.title,description=record.description,priority=record.priority,
-                                    status=record.status,assigned_to=assigned_name,created_by=created_name.user_name,estimated_hours=record.estimated_hours
+                                    status=record.status,assigned_to=assigned_name,created_by=user.user_name,estimated_hours=record.estimated_hours
                                     ,actual_hours=record.actual_hours,created_at=record.created_at,updated_at=record.updated_at,
                                     completed_at=record.completed_at,due_date=record.due_date,))
     return results

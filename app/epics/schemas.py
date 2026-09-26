@@ -24,7 +24,7 @@ class CreateEpic(BaseModel):
     priority:str=Field(...,min_length=4,max_length=20,description='priority of the project stays here')
 
 class UpdateEpic(BaseModel):
-    title:Optional[str]=Field(None,min_length=7,max_length=225,description='title of the epic')
+    title:Optional[str]=Field(None,min_length=3,max_length=225,description='title of the epic')
     description:Optional[str]=Field(None,min_length=8,description='description of the epic')
     status:Optional[str]=Field(None,min_length=4,max_length=20,description='current state of the epic')
     priority:Optional[str]=Field(None,min_length=4,max_length=20,description='priority of the epic')
@@ -32,10 +32,10 @@ class UpdateEpic(BaseModel):
 #create user story model
 class CreateStory(BaseModel):
     epic_id:UUID=Field(...,description='unique id of epic that story created at')
-    title:str=Field(...,min_length=4,max_length=225,description='title of the user story')
+    title:str=Field(...,min_length=3,max_length=225,description='title of the user story')
     description:str=Field(...,min_length=8,description='description of the user story')
     acceptance_criteria:str=Field(...,min_length=8,description='explains the bugs or the features to update with detail solution')
-    priority:str=Field(...,min_length=4,max_length=20,description='priority of user story')
+    priority:str=Field(...,min_length=3,max_length=20,description='priority of user story')
     story_points:int=Field(...,lt=6,gt=0,description='story points can be added between 1 to 5')
     status:str=Field(...,min_length=4,max_length=20,description='current satate of the epic')
 
@@ -65,10 +65,10 @@ class UserstoryResponse(BaseModel):
 class CreateTask(BaseModel):
     project_id:UUID=Field(...,description='unique id of project')
     user_story_id:UUID=Field(...,description='unique id of user story')
-    title:str=Field(...,min_length=4,max_length=225,description='title of the user story')
+    title:str=Field(...,min_length=3,max_length=225,description='title of the user story')
     description:str=Field(...,min_length=8,description='description of the user story')
-    priority:str=Field(...,min_length=4,max_length=20,description='priority of task')
-    status:str=Field(...,min_length=4,max_length=20,description='current satate of the task')
+    priority:str=Field(...,min_length=3,max_length=20,description='priority of task')
+    status:str=Field(...,min_length=3,max_length=20,description='current satate of the task')
     assigned_to:Optional[UUID]=Field(None,description='user id that task is assigned to')
     estimated_hours:float=Field(...,description='estimated time to complete this task')
     actual_hours:float=Field(...,description='actual time to complete the task in hours')
@@ -95,7 +95,7 @@ class TaskResponse(BaseModel):
     priority:str
     status:str
     assigned_to:Optional[str]
-    created_by:str
+    created_by:UUID|str
     estimated_hours:float
     actual_hours:float
     due_date:date
