@@ -1,0 +1,11 @@
+argon2-cffi>=25.1.0
+bcrypt>=5.0.0
+dotenv>=0.9.9
+fastapi>=0.141.1
+psycopg2-binary>=2.9.12
+pwdlib>=0.3.1
+pydantic[email]>=2.13.5
+pyjwt>=2.14.0
+python-multipart>=0.0.32
+sqlalchemy>=2.0.52
+uvicorn>=0.52.4
