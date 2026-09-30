@@ -25,6 +25,7 @@ app = FastAPI(version="1.0.0",title="Agile Bot",description="This is a FastAPI a
 
 origins = [
     "http://localhost:5173",
+    "https://agilebotclient.netlify.app"
 ]
 
 app.add_middleware(
