@@ -1,11 +1,11 @@
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from auth.dependencies import validate_user
-from projects.models import Projects
-from epics.models import Tasks
-from sprints.models import SprintItems, Sprints
-from sprints.schemas import (
+from app.auth.dependencies import validate_user
+from app.projects.models import Projects
+from app.epics.models import Tasks
+from app.sprints.models import SprintItems, Sprints
+from app.sprints.schemas import (
 	CreateSprint,
 	CreateSprintItems,
 	MessageResponse,

@@ -1,6 +1,6 @@
 from sqlalchemy import (Column,String,Boolean,Integer,DateTime,func,Text,ForeignKey)
 from sqlalchemy.orm import declarative_base
-from core.database import Base
+from app.core.database import Base
 from sqlalchemy.types import UUID
 import uuid
 

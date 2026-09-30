@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.core.database import Base
-from core.database import engine,get_db
-from auth.auth_routes import auth_router
-from projects.routes import project_router
-from epics.routes import epic_router
-from sprints.routes import sprint_router
-from attachments.routes import attachment_router
+from app.core.database import engine,get_db
+from app.auth.auth_routes import auth_router
+from app.projects.routes import project_router
+from app.epics.routes import epic_router
+from app.sprints.routes import sprint_router
+from app.attachments.routes import attachment_router
 from fastapi.middleware.cors import CORSMiddleware
 
 

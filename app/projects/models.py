@@ -1,7 +1,7 @@
 from sqlalchemy import (Date,Boolean,Column,ForeignKey,String,Text,DateTime,func)
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.types import UUID
-from core.database import Base
+from app.core.database import Base
 import uuid
 
 

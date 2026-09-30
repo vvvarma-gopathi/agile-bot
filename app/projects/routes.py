@@ -1,8 +1,8 @@
 from fastapi import APIRouter,status,Depends
-from core.database import get_db
-from projects.schemas import (ProjectResponse,CreateProject,CreatedResponse,MessageResponse,UpdateProject,ProjectMemberResponse,AddProjectMember,WorkResponse)
-from auth.dependencies import get_current_user
-from projects.services import (create_project,get_all_projects,delete_project,
+from app.core.database import get_db
+from app.projects.schemas import (ProjectResponse,CreateProject,CreatedResponse,MessageResponse,UpdateProject,ProjectMemberResponse,AddProjectMember,WorkResponse)
+from app.auth.dependencies import get_current_user
+from app.projects.services import (create_project,get_all_projects,delete_project,
                                updateproject,get_project_by_status,get_project_by_name,
                                add_project_member,get_project_members,get_projectmember_byrole,
                                work_details,delete_member)

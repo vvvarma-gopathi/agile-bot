@@ -1,9 +1,9 @@
 from uuid import UUID
 from fastapi import HTTPException, status
-from attachments.models import Comments,Attachments
-from attachments.schemas import CreateComment, MessageResponse, UpdateAttachment, UpdateComment,CommentResponse,AttachmentResponse
-from auth.dependencies import validate_user
-from auth.models import Users
+from app.attachments.models import Comments,Attachments
+from app.attachments.schemas import CreateComment, MessageResponse, UpdateAttachment, UpdateComment,CommentResponse,AttachmentResponse
+from app.auth.dependencies import validate_user
+from app.auth.models import Users
 
 
 def _get_comment(comment_id: UUID, db):

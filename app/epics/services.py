@@ -1,11 +1,11 @@
-from epics.schemas import CreateEpic,UpdateEpic,MessageResponse,CreateTask,UpdateTask,AssignTaskUser,CreateStory,UpdateStory,AddTaskDependency,Delete_depends,EpicResponse,TaskResponse
+from app.epics.schemas import CreateEpic,UpdateEpic,MessageResponse,CreateTask,UpdateTask,AssignTaskUser,CreateStory,UpdateStory,AddTaskDependency,Delete_depends,EpicResponse,TaskResponse
 from fastapi import HTTPException,status
-from epics.models import Epics,Tasks,UserStories,TaskDependencies
+from app.epics.models import Epics,Tasks,UserStories,TaskDependencies
 from uuid import UUID
-from auth.dependencies import validate_user
-from sprints.models import Sprints,SprintItems
-from auth.models import Users
-from auth.dependencies import validate_user
+from app.auth.dependencies import validate_user
+from app.sprints.models import Sprints,SprintItems
+from app.auth.models import Users
+from app.auth.dependencies import validate_user
 from sqlalchemy import select
 
 def create_epic_helper(epic:dict)->Epics:

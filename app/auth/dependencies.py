@@ -1,11 +1,11 @@
 from fastapi import HTTPException,status,Form,Depends
-from core.config import settings
+from app.core.config import settings
 import jwt
 from typing import Annotated
-from auth.schemas import UserCreate,UserLogin
+from app.auth.schemas import UserCreate,UserLogin
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime,timedelta,timezone
-from core.config import settings
+from app.core.config import settings
 import jwt
 
 auth_bearer=OAuth2PasswordBearer(tokenUrl='login')

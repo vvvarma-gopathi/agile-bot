@@ -1,12 +1,12 @@
-from projects.schemas import CreateProject,UpdateProject,MessageResponse,AddProjectMember,WorkResponse,ProjectResponse,ProjectMemberResponse
-from auth.dependencies import get_current_user,validate_user
-from projects.models import Projects,Project_members
+from app.projects.schemas import CreateProject,UpdateProject,MessageResponse,AddProjectMember,WorkResponse,ProjectResponse,ProjectMemberResponse
+from app.auth.dependencies import get_current_user,validate_user
+from app.projects.models import Projects,Project_members
 from fastapi import HTTPException,status
 from uuid import UUID
 from sqlalchemy import select,func
-from epics.models import Tasks,Epics
-from sprints.models import Sprints
-from auth.models import Users
+from app.epics.models import Tasks,Epics
+from app.sprints.models import Sprints
+from app.auth.models import Users
 
 
 def work_details_helper(work_details:dict)->WorkResponse:

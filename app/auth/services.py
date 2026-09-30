@@ -1,10 +1,10 @@
 from fastapi import HTTPException,status
-from auth.models import Users,Roles
-from auth.schemas import UserCreate,UserLogin,MessageResponse,ProfileResponse,SelectUser
+from app.auth.models import Users,Roles
+from app.auth.schemas import UserCreate,UserLogin,MessageResponse,ProfileResponse,SelectUser
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib.hashers.bcrypt import BcryptHasher
-from auth.dependencies import create_access_token
+from app.auth.dependencies import create_access_token
 
 
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, status
 from uuid import UUID
 
-from attachments.schemas import CommentResponse, CreateComment, MessageResponse, UpdateAttachment, UpdateComment,AttachmentResponse,CreateAttachment
-from attachments.services import create_comment, delete_attachment, delete_comment, get_attachments_by_comment_id, get_comments_by_task_id, update_attachment, update_comment,create_attachment
-from auth.dependencies import get_current_user
-from core.database import get_db
+from app.attachments.schemas import CommentResponse, CreateComment, MessageResponse, UpdateAttachment, UpdateComment,AttachmentResponse,CreateAttachment
+from app.attachments.services import create_comment, delete_attachment, delete_comment, get_attachments_by_comment_id, get_comments_by_task_id, update_attachment, update_comment,create_attachment
+from app.auth.dependencies import get_current_user
+from app.core.database import get_db
 
 
 attachment_router = APIRouter(prefix='/comments', tags=['Comment Routes'])

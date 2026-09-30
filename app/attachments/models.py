@@ -1,4 +1,4 @@
-from core.database import Base
+from app.core.database import Base
 from sqlalchemy import Column,UUID,ForeignKey,func,String,Text,Boolean,DateTime,BIGINT
 from uuid import uuid4
 class Comments(Base):

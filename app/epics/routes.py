@@ -1,10 +1,10 @@
 from fastapi import APIRouter
-from epics.schemas import EpicResponse,CreateEpic,UpdateEpic,MessageResponse,TaskResponse,CreateTask,UpdateTask,AssignTaskUser,UserstoryResponse,CreateStory,UpdateStory,TaskDependsResponse,AddTaskDependency,Delete_depends
+from app.epics.schemas import EpicResponse,CreateEpic,UpdateEpic,MessageResponse,TaskResponse,CreateTask,UpdateTask,AssignTaskUser,UserstoryResponse,CreateStory,UpdateStory,TaskDependsResponse,AddTaskDependency,Delete_depends
 from fastapi import status,Depends
-from auth.dependencies import get_current_user
-from core.database import get_db
-from epics.services import create_epic,update_epic,delete_epic,getall_epics,searchby_epic_id,create_task,update_task,display_task,display_task_by_assigny,assign_task,delete_task,search_task
-from epics.services import create_userstory,getall_userstories,update_userstory,delete_userstory,get_userstory_by_search,add_task_depend,getall_taskdepends,delete_taskdepends,display_task_sprint
+from app.auth.dependencies import get_current_user
+from app.core.database import get_db
+from app.epics.services import create_epic,update_epic,delete_epic,getall_epics,searchby_epic_id,create_task,update_task,display_task,display_task_by_assigny,assign_task,delete_task,search_task
+from app.epics.services import create_userstory,getall_userstories,update_userstory,delete_userstory,get_userstory_by_search,add_task_depend,getall_taskdepends,delete_taskdepends,display_task_sprint
 
 epic_router=APIRouter(prefix='/epics',tags=['Epic Route'])
 

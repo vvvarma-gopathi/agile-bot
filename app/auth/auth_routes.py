@@ -2,7 +2,7 @@ from fastapi import Depends,status,APIRouter
 from auth.schemas import UserCreate,UserResponse,UserLogin,TokenResponse,MessageResponse,ProfileResponse,SelectUser
 from auth.services import create_user,authenticate_user,profile,profile_dash,get_users
 from core.database import get_db
-from auth.dependencies import user_form,get_current_user,user_login_form
+from app.auth.dependencies import user_form,get_current_user,user_login_form
 from typing import Annotated
 
 
