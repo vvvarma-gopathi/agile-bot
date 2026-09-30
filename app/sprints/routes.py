@@ -13,7 +13,7 @@ from app.sprints.schemas import (
 	UpdateSprint,
 	UpdateSprintItems,
 )
-from sprints.services import (
+from app.sprints.services import (
 	create_sprint,
 	create_sprint_item,
 	delete_sprint,
