@@ -5,6 +5,7 @@ from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib.hashers.bcrypt import BcryptHasher
 from app.auth.dependencies import create_access_token
+from sqlalchemy import select
 
 
 
@@ -32,9 +33,9 @@ def helper_function(user:dict):
 
 
 def create_user(user:UserCreate,db):
-    user_result = db.query(Users).filter(Users.email==user.email).first()
-    user_by_user_name=db.query(Users).filter(Users.user_name==user.user_name).first()
-    user_by_number=db.query(Users).filter(Users.phone_number==user.phone_number).first()
+    user_result = db.scalar(select(Users).where(Users.email==user.email))
+    user_by_user_name=db.scalar(select(Users).where(Users.user_name==user.user_name))
+    user_by_number=db.scalar(select(Users).where(Users.phone_number==user.phone_number))
     if user_result:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="User with this email or phone number already exists")
     if user_by_user_name:
@@ -52,27 +53,25 @@ def create_user(user:UserCreate,db):
         return MessageResponse(message="user registered successfully..")
 
 def authenticate_user(user:UserLogin,db):
-    user_result = db.query(Users).filter(Users.email==user.email).first()
+    user_result = db.scalar(select(Users).where(Users.email==user.email))
     if user_result and verify_password(user.hashed_password,user_result.hashed_password):
         jwt_token=create_access_token({'id':user_result.id,'user_name':user_result.user_name,'role_id':user_result.role_id})
         return {'access_token':jwt_token,'token_type':'bearer'}
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid User Credentials')
 
 def profile(payload:dict,db):
-    user_result=db.query(Users).filter(Users.id==payload['id']).first()
+    user_result=db.scalar(select(Users).where(Users.id==payload['id']))
     print(payload['id'])
     print(user_result,type(user_result))
     return user_result
 
 async def profile_dash(payload,db):
-    user=db.query(Users).filter(Users.id==payload['id']).first()
-    role=db.query(Roles).filter(Roles.id==user.role_id).first()
+    user=db.scalar(select(Users).where(Users.id==payload['id']))
+    role=db.scalar(select(Roles).where(Roles.id==user.role_id))
     return ProfileResponse(user_name=user.user_name,role=role.name,user_id=user.id)
 
 async def get_users(payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can add project member')
-    users=db.query(Users).all()
+    users=db.scalars(select(Users)).all()
     if not users:
         return MessageResponse(message='no users found')
     results=[]

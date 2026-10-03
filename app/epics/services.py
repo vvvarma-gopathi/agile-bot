@@ -2,11 +2,9 @@ from app.epics.schemas import CreateEpic,UpdateEpic,MessageResponse,CreateTask,U
 from fastapi import HTTPException,status
 from app.epics.models import Epics,Tasks,UserStories,TaskDependencies
 from uuid import UUID
-from app.auth.dependencies import validate_user
 from app.sprints.models import Sprints,SprintItems
 from app.auth.models import Users
-from app.auth.dependencies import validate_user
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 
 def create_epic_helper(epic:dict)->Epics:
     return Epics(**epic)
@@ -18,11 +16,9 @@ def create_userstory_helper(userstory:dict)->UserStories:
     return UserStories(**userstory)
 
 async def create_epic(epic_details:CreateEpic,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can create an epic..')
     epic=epic_details.model_dump()
     epic['created_by']=payload['id']
-    fetch_epic=db.query(Epics).filter(Epics.title==epic['title'] and Epics.project_id==epic['project_id']).first()
+    fetch_epic=db.scalar(select(Epics).where(Epics.title==epic['title'], Epics.project_id==epic['project_id']))
     if fetch_epic:
         return MessageResponse(message=f'epic with title {epic['title']} already exist kindly change the title to create one!')
     epic_record=create_epic_helper(epic)
@@ -33,15 +29,13 @@ async def create_epic(epic_details:CreateEpic,payload,db):
     return MessageResponse(message='epic created successfully..')
 
 async def update_epic(epic_id:str,epic_details:UpdateEpic,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can update an epic..')
-    epic_record=db.query(Epics).filter(Epics.id==epic_id).first()
+    epic_record=db.scalar(select(Epics).where(Epics.id==epic_id))
     if not epic_record:
         return MessageResponse(message='No epic found to update..')
     updates=epic_details.model_dump(exclude_unset=True,exclude_none=True)
     if not updates:
         return MessageResponse(message='No epic fields provided to update..')
-    if 'title' in updates and db.query(Epics).filter(Epics.title==updates['title'],Epics.id!=epic_id).first():
+    if 'title' in updates and db.scalar(select(Epics).where(Epics.title==updates['title'],Epics.id!=epic_id)):
         return MessageResponse(message=f'Epic with title "{updates["title"]}" already exists')
     for field,value in updates.items():
         setattr(epic_record,field,value)
@@ -50,9 +44,7 @@ async def update_epic(epic_id:str,epic_details:UpdateEpic,payload,db):
     return MessageResponse(message='epic updated successfully.')
 
 async def delete_epic(epic_id:str,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can delete an epic..')
-    epic_record=db.query(Epics).filter(Epics.id==epic_id).first()
+    epic_record=db.scalar(select(Epics).where(Epics.id==epic_id))
     if not epic_record:
         return MessageResponse(message='No epic found to delete..')
     db.delete(epic_record)
@@ -60,9 +52,8 @@ async def delete_epic(epic_id:str,payload,db):
     return MessageResponse(message=f'Epic deleted successfully with id {epic_id}')
 
 async def getall_epics(project_id:str,payload,db):
-    validate_user(payload)
     results=[]
-    epic_records=db.query(Epics).filter(Epics.project_id==project_id).all()
+    epic_records=db.scalars(select(Epics).where(Epics.project_id==project_id)).all()
     if not epic_records:
         return MessageResponse(message=f'no records found with project_id {project_id}')
     for record in epic_records:
@@ -71,17 +62,13 @@ async def getall_epics(project_id:str,payload,db):
     return results
 
 async def searchby_epic_id(epic_title:str,payload,db):
-    if not payload['id']:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid user please login to continue...')
-    epic_record=db.query(Epics).filter(Epics.title==epic_title.replace('+',' ')).first()
+    epic_record=db.scalar(select(Epics).where(Epics.title==epic_title.replace('+',' ')))
     if not epic_record:
         return MessageResponse(message=f'No epics found with title "{epic_title}".')
     return epic_record
 
 async def create_task(task_details:CreateTask,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can create tasks..')
-    if db.query(Tasks).filter(Tasks.title==task_details.title).first():
+    if db.scalar(select(Tasks).where(Tasks.title==task_details.title)):
         return MessageResponse(message=f'Task with title "{task_details.title}" already exists in tasks change the title to insert another task')
     task_data=task_details.model_dump()
     task_data['created_by']=payload['id']
@@ -93,7 +80,7 @@ async def create_task(task_details:CreateTask,payload,db):
     return task_record
 
 async def update_task(task_id:str,task_details:UpdateTask,payload,db):
-    task_record=db.query(Tasks).filter(Tasks.id==task_id).first()
+    task_record=db.scalar(select(Tasks).where(Tasks.id==task_id))
     if not task_record:
         return MessageResponse(message='No Task found to update..')
     updates=task_details.model_dump(exclude_unset=True)
@@ -113,7 +100,7 @@ async def update_task(task_id:str,task_details:UpdateTask,payload,db):
     else:
         if payload['role_id']!=1 and payload['role_id']!=3:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can update tasks..')
-        if 'title' in updates and db.query(Tasks).filter(Tasks.title==updates['title'],Tasks.id!=task_id).first():
+        if 'title' in updates and db.scalar(select(Tasks).where(Tasks.title==updates['title'],Tasks.id!=task_id)):
             return MessageResponse(message=f'Task with title "{updates["title"]}" already exists in tasks')
         for field,value in updates.items():
             setattr(task_record,field,value)
@@ -122,42 +109,38 @@ async def update_task(task_id:str,task_details:UpdateTask,payload,db):
         return MessageResponse(message='updated successfully..')
 
 async def display_task(search_id:str,payload,db):
-    validate_user(payload)
-    task_records=db.query(Tasks).filter(Tasks.user_story_id==search_id).all()
+    task_records=db.scalars(select(Tasks).where(Tasks.user_story_id==search_id)).all()
     if not task_records:
         return MessageResponse(message='No tasks found create one!')
     return task_records
 
 async def search_task(title:str,payload,db):
-    validate_user(payload)
-    task_record=db.query(Tasks).filter(Tasks.title==title).first()
+    task_record=db.scalar(select(Tasks).where(Tasks.title==title))
     if not task_record:
         return MessageResponse(message='No tasks found create one!')
     return task_record
 
 async def display_task_by_assigny(payload,db):
-    validate_user(payload)
-    task_records=db.query(Tasks).filter(Tasks.assigned_to==payload['id']).all()
+    task_records=db.scalars(select(Tasks).where(Tasks.assigned_to==payload['id'])).all()
     if not task_records:
         return MessageResponse(message='No tasks assigned to you..')
     return task_records
 
 async def display_task_sprint(sprint_id,payload,db):
-    validate_user(payload)
     results=[]
     query=(select(SprintItems.task_id).join(Sprints,Sprints.id==SprintItems.sprint_id).where(Sprints.id==sprint_id))
     tasks_ids=db.execute(query).scalars().all()
     if not tasks_ids:
         return MessageResponse(message='No sprints found!')
-    tasks=db.query(Tasks).filter(Tasks.id.in_(tasks_ids)).all()
+    tasks=db.scalars(select(Tasks).where(Tasks.id.in_(tasks_ids))).all()
     if not tasks:
         return MessageResponse(message='No sprints found!')
     for record in tasks:
         assigned_name='not assigned'
         if record.assigned_to:
-            assigned_name=(db.query(Users).filter(Users.id==record.assigned_to).first()).user_name
+            assigned_name=db.scalar(select(Users.user_name).where(Users.id==record.assigned_to))
         print(record.created_by)
-        user=db.query(Users).filter(Users.id==record.created_by).first()
+        user=db.scalar(select(Users).where(Users.id==record.created_by))
         print(user.user_name)
         results.append(TaskResponse(id=record.id,project_id=record.project_id,user_story_id=record.user_story_id,
                                     title=record.title,description=record.description,priority=record.priority,
@@ -167,26 +150,21 @@ async def display_task_sprint(sprint_id,payload,db):
     return results
 
 async def assign_task(assign_details:AssignTaskUser,payload,db):
-    validate_user(payload)
-    if db.query(Tasks).filter(Tasks.id==assign_details.task_id and Tasks.assigned_to==assign_details.user_id).first():
+    if db.scalar(select(Tasks).where(Tasks.id==assign_details.task_id, Tasks.assigned_to==assign_details.user_id)):
         return MessageResponse(message='Task already assigned to user..')
-    db.query(Tasks).filter(Tasks.id==assign_details.task_id).update(Tasks.assigned_to==assign_details.user_id,synchronize_session='fetch')
+    db.execute(update(Tasks).where(Tasks.id==assign_details.task_id).values(assigned_to=assign_details.user_id).execution_options(synchronize_session='fetch'))
     db.commit()
     return MessageResponse(message='Task successfully assigned..')
 
 async def delete_task(task_id:str,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can create tasks..')
-    if not db.query(Tasks).filter(Tasks.id==task_id).first():
+    if not db.scalar(select(Tasks).where(Tasks.id==task_id)):
         return MessageResponse(message='No Task found to delete..')
-    db.query(Tasks).filter(Tasks.id==task_id).delete(synchronize_session='fetch')
+    db.execute(delete(Tasks).where(Tasks.id==task_id).execution_options(synchronize_session='fetch'))
     db.commit()
     return MessageResponse(message=f'Task deleted successfully with id {task_id}')
 
 async def create_userstory(story_details:CreateStory,payload,db):
-    if payload["role_id"]!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can create tasks..')
-    if db.query(UserStories).filter(UserStories.title==story_details.title).first():
+    if db.scalar(select(UserStories).where(UserStories.title==story_details.title)):
         raise HTTPException(status_code=status.HTTP_302_FOUND,detail=f'user story with title "{story_details.title}" already exist.')
     user_stories=story_details.model_dump()
     user_stories['created_by']=payload['id']
@@ -198,22 +176,19 @@ async def create_userstory(story_details:CreateStory,payload,db):
     return story_record
 
 async def getall_userstories(epic_id:str,payload,db):
-    validate_user(payload)
-    story_records=db.query(UserStories).filter(UserStories.epic_id==epic_id).all()
+    story_records=db.scalars(select(UserStories).where(UserStories.epic_id==epic_id)).all()
     if not story_records:
         return MessageResponse(message=f'No records found with the epic_id "{epic_id}"')
     return story_records
 
 async def update_userstory(story_id:str,story_details:UpdateStory,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can update a user story..')
-    story_record=db.query(UserStories).filter(UserStories.id==story_id).first()
+    story_record=db.scalar(select(UserStories).where(UserStories.id==story_id))
     if not story_record:
         return MessageResponse(message='No user story found to update..')
     updates=story_details.model_dump(exclude_unset=True,exclude_none=True)
     if not updates:
         return MessageResponse(message='No user story fields provided to update..')
-    if 'title' in updates and db.query(UserStories).filter(UserStories.title==updates['title'],UserStories.id!=story_id).first():
+    if 'title' in updates and db.scalar(select(UserStories).where(UserStories.title==updates['title'],UserStories.id!=story_id)):
         return MessageResponse(message=f'User story with title "{updates["title"]}" already exists')
     for field,value in updates.items():
         setattr(story_record,field,value)
@@ -222,9 +197,7 @@ async def update_userstory(story_id:str,story_details:UpdateStory,payload,db):
     return story_record
 
 async def delete_userstory(story_id:str,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager or admin can delete a user story..')
-    story_record=db.query(UserStories).filter(UserStories.id==story_id).first()
+    story_record=db.scalar(select(UserStories).where(UserStories.id==story_id))
     if not story_record:
         return MessageResponse(message='No user story found to delete..')
     db.delete(story_record)
@@ -232,12 +205,11 @@ async def delete_userstory(story_id:str,payload,db):
     return MessageResponse(message=f'User story deleted successfully with id {story_id}')
 
 async def get_userstory_by_search(search_id,payload,db):
-    validate_user(payload)
     search_value=search_id.replace('+',' ')
-    story_record=db.query(UserStories).filter(UserStories.title==search_value).first()
+    story_record=db.scalar(select(UserStories).where(UserStories.title==search_value))
     if not story_record:
         try:
-            story_record=db.query(UserStories).filter(UserStories.id==UUID(search_id)).first()
+            story_record=db.scalar(select(UserStories).where(UserStories.id==UUID(search_id)))
         except ValueError:
             story_record=None
     if not story_record:
@@ -246,9 +218,7 @@ async def get_userstory_by_search(search_id,payload,db):
 
 #adding task dependencies for tasks
 async def add_task_depend(depend_details:AddTaskDependency,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only project manager or admin can add dependency tasks.')
-    task=db.query(Tasks).filter(Tasks.id==depend_details.task_id).first()
+    task=db.scalar(select(Tasks).where(Tasks.id==depend_details.task_id))
     if not task:
         return MessageResponse(message='No task fount to add dependencies')
     dependency_record=TaskDependencies(**depend_details.model_dump())
@@ -258,16 +228,13 @@ async def add_task_depend(depend_details:AddTaskDependency,payload,db):
     return dependency_record
 
 async def getall_taskdepends(task_id:str,payload,db):
-    validate_user(payload)
-    taskdepends_records=db.query(TaskDependencies).filter(TaskDependencies.task_id==task_id).all()
+    taskdepends_records=db.scalars(select(TaskDependencies).where(TaskDependencies.task_id==task_id)).all()
     if not taskdepends_records:
         return MessageResponse(message='No dependencies found')
     return taskdepends_records
 
 async def delete_taskdepends(task:Delete_depends,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only project manager or admin can add dependency tasks.')
-    task_record=db.query(TaskDependencies).filter( TaskDependencies.task_id==task.task_id and TaskDependencies.depends_on_task_id==task.depends_on_task_id).first()
+    task_record=db.scalar(select(TaskDependencies).where(TaskDependencies.task_id==task.task_id, TaskDependencies.depends_on_task_id==task.depends_on_task_id))
     if not task_record:
         return MessageResponse(message='No task dependencies to delete')
     db.delete(task_record)

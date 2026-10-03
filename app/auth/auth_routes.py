@@ -2,7 +2,7 @@ from fastapi import Depends,status,APIRouter
 from app.auth.schemas import UserCreate,UserResponse,UserLogin,TokenResponse,MessageResponse,ProfileResponse,SelectUser
 from app.auth.services import create_user,authenticate_user,profile,profile_dash,get_users
 from app.core.database import get_db
-from app.auth.dependencies import user_form,get_current_user,user_login_form
+from app.auth.dependencies import user_form, user_login_form, validate_project_manager_admin, validate_user
 from typing import Annotated
 
 
@@ -17,13 +17,13 @@ def login_user(user:Annotated[UserLogin,Depends(user_login_form)],db=Depends(get
     return authenticate_user(user=user,db=db)
 
 @auth_router.get("/profile",response_model=UserResponse,status_code=status.HTTP_200_OK)
-def get_profile(payload:dict=Depends(get_current_user),db=Depends(get_db)):
+def get_profile(payload:dict=Depends(validate_user),db=Depends(get_db)):
     return profile(payload,db)
 
 @auth_router.get("/profile/dash",response_model=ProfileResponse,status_code=status.HTTP_200_OK)
-async def get_profile_dash(payload:dict=Depends(get_current_user),db=Depends(get_db)):
+async def get_profile_dash(payload:dict=Depends(validate_user),db=Depends(get_db)):
     return await profile_dash(payload,db)
 
 @auth_router.get('/select/users',response_model=list[SelectUser],status_code=status.HTTP_200_OK)
-async def display_users(payload=Depends(get_current_user),db=Depends(get_db)):
+async def display_users(payload=Depends(validate_project_manager_admin),db=Depends(get_db)):
     return await get_users(payload,db)

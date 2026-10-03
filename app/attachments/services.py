@@ -2,12 +2,12 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from app.attachments.models import Comments,Attachments
 from app.attachments.schemas import CreateComment, MessageResponse, UpdateAttachment, UpdateComment,CommentResponse,AttachmentResponse
-from app.auth.dependencies import validate_user
 from app.auth.models import Users
+from sqlalchemy import select
 
 
 def _get_comment(comment_id: UUID, db):
-	comment = db.query(Comments).filter(Comments.id == comment_id).first()
+	comment = db.scalar(select(Comments).where(Comments.id == comment_id))
 	if not comment:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -17,7 +17,6 @@ def _get_comment(comment_id: UUID, db):
 
 
 def _require_comment_owner(comment, payload):
-	validate_user(payload)
 	if comment.user_id != UUID(str(payload['id'])):
 		raise HTTPException(
 			status_code=status.HTTP_403_FORBIDDEN,
@@ -26,7 +25,7 @@ def _require_comment_owner(comment, payload):
 
 
 def _get_attachment(attachment_id: UUID, db):
-	attachment = db.query(Attachments).filter(Attachments.id == attachment_id).first()
+	attachment = db.scalar(select(Attachments).where(Attachments.id == attachment_id))
 	if not attachment:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -36,7 +35,6 @@ def _get_attachment(attachment_id: UUID, db):
 
 
 def _require_attachment_owner(attachment, payload):
-	validate_user(payload)
 	if attachment.uploaded_by != UUID(str(payload['id'])):
 		raise HTTPException(
 			status_code=status.HTTP_403_FORBIDDEN,
@@ -45,7 +43,6 @@ def _require_attachment_owner(attachment, payload):
 
 
 async def create_comment(comment_details: CreateComment, payload, db):
-	validate_user(payload)
 	comment = Comments(
 		**comment_details.model_dump(),
 		user_id=UUID(str(payload['id'])),
@@ -57,11 +54,10 @@ async def create_comment(comment_details: CreateComment, payload, db):
 
 
 async def get_comments_by_task_id(task_id: UUID, payload, db):
-	validate_user(payload)
 	result=[]
-	comments=db.query(Comments).filter(Comments.task_id == task_id, Comments.is_delete.is_(False)).order_by(Comments.created_at).all()
+	comments=db.scalars(select(Comments).where(Comments.task_id == task_id, Comments.is_delete.is_(False)).order_by(Comments.created_at)).all()
 	for comment in comments:
-		user=db.query(Users).filter(Users.id==comment.user_id).first()
+		user=db.scalar(select(Users).where(Users.id==comment.user_id))
 		result.append(CommentResponse(id=comment.id,user_id=comment.user_id,
 							task_id=comment.task_id,project_id=comment.project_id,parent_comment_id=comment.parent_comment_id,
 							content=comment.content,is_delete=comment.is_delete,created_at=comment.created_at,updated_at=comment.updated_at,user_name=user.user_name))
@@ -91,8 +87,7 @@ async def delete_comment(comment_id: UUID, payload, db):
 	return MessageResponse(message=f'Comment deleted successfully...')
 
 async def create_attachment(attachment_details,payload,db):
-	validate_user(payload)
-	comment=db.query(Comments).filter(Comments.id==attachment_details.comment_id).first()
+	comment=db.scalar(select(Comments).where(Comments.id==attachment_details.comment_id))
 	if not comment or comment.is_delete:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='no comment found')
 	_require_comment_owner(comment,payload)
@@ -131,17 +126,16 @@ async def delete_attachment(attachment_id: UUID, payload, db):
 
 
 async def get_attachments_by_comment_id(comment_id: UUID, payload, db):
-	validate_user(payload)
 	result=[]
-	comment = db.query(Comments).filter(Comments.id == comment_id, Comments.is_delete.is_(False)).first()
+	comment = db.scalar(select(Comments).where(Comments.id == comment_id, Comments.is_delete.is_(False)))
 	if not comment:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
 			detail=f'No comment exists with id={comment_id}',
 		)
-	attachments=db.query(Attachments).filter(Attachments.comment_id == comment_id).order_by(Attachments.created_at).all()
+	attachments=db.scalars(select(Attachments).where(Attachments.comment_id == comment_id).order_by(Attachments.created_at)).all()
 	for attachment in attachments:
-		user=db.query(Users).filter(Users.id==attachment.uploaded_by).first()
+		user=db.scalar(select(Users).where(Users.id==attachment.uploaded_by))
 		result.append(AttachmentResponse(file_name=attachment.file_name,
 		                                 file_url=attachment.file_url,file_type=attachment.file_type,
 										 uploaded_by=user.user_name,created_at=attachment.created_at))

@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from app.auth.dependencies import validate_user
+from sqlalchemy import select
 from app.projects.models import Projects
 from app.epics.models import Tasks
 from app.sprints.models import SprintItems, Sprints
@@ -15,13 +15,7 @@ from app.sprints.schemas import (
 
 #checking permission for project manager and admin roles
 def _require_project_manager(payload, project_id: UUID, db):
-	if payload['role_id'] not in (1, 3):
-		raise HTTPException(
-			status_code=status.HTTP_403_FORBIDDEN,
-			detail='Only an admin or project manager can manage sprints',
-		)
-
-	project = db.query(Projects).filter(Projects.id == project_id).first()
+	project = db.scalar(select(Projects).where(Projects.id == project_id))
 	if not project:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -38,7 +32,7 @@ def _require_project_manager(payload, project_id: UUID, db):
 
 #get sprint function 
 async def _get_sprint(id,db):
-	sprint=db.query(Sprints).filter(Sprints.id==id).first()
+	sprint=db.scalar(select(Sprints).where(Sprints.id==id))
 	if not sprint:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='no sprints found')
 	return sprint
@@ -47,7 +41,7 @@ async def _get_sprint(id,db):
 async def create_sprint(sprint_details: CreateSprint, payload, db):
 	_require_project_manager(payload, sprint_details.project_id, db)
 
-	existing_sprint = db.query(Sprints).filter(Sprints.name == sprint_details.name).first()
+	existing_sprint = db.scalar(select(Sprints).where(Sprints.name == sprint_details.name))
 	if existing_sprint:
 		raise HTTPException(
 			status_code=status.HTTP_409_CONFLICT,
@@ -65,15 +59,13 @@ async def create_sprint(sprint_details: CreateSprint, payload, db):
 
 #get sprint by id
 async def get_sprints_by_id(search_id,payload,db):
-	if not payload['id']:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='invalid user credentials please login.')
-	sprint_by_title=db.query(Sprints).filter(Sprints.title==search_id.replace('+',' ')).first()
+	sprint_by_title=db.scalar(select(Sprints).where(Sprints.title==search_id.replace('+',' ')))
 	if not sprint_by_title:
 		return _get_sprint(UUID(search_id),db)
 
 #update sprint function
 async def update_sprint(sprint_id: UUID, sprint_details: UpdateSprint, payload, db):
-	sprint = db.query(Sprints).filter(Sprints.id == sprint_id).first()
+	sprint = db.scalar(select(Sprints).where(Sprints.id == sprint_id))
 	if not sprint:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -92,10 +84,10 @@ async def update_sprint(sprint_id: UUID, sprint_details: UpdateSprint, payload, 
 		)
 
 	if 'name' in update_data:
-		duplicate = db.query(Sprints).filter(
+		duplicate = db.scalar(select(Sprints).where(
 			Sprints.name == update_data['name'],
 			Sprints.id != sprint_id,
-		).first()
+		))
 		if duplicate:
 			raise HTTPException(
 				status_code=status.HTTP_409_CONFLICT,
@@ -110,7 +102,7 @@ async def update_sprint(sprint_id: UUID, sprint_details: UpdateSprint, payload, 
 
 #delete sprint function
 async def delete_sprint(sprint_id: UUID, payload, db):
-	sprint = db.query(Sprints).filter(Sprints.id == sprint_id).first()
+	sprint = db.scalar(select(Sprints).where(Sprints.id == sprint_id))
 	if not sprint:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -124,7 +116,7 @@ async def delete_sprint(sprint_id: UUID, payload, db):
 
 
 def _get_sprint_item(item_id: UUID, db):
-	item = db.query(SprintItems).filter(SprintItems.id == item_id).first()
+	item = db.scalar(select(SprintItems).where(SprintItems.id == item_id))
 	if not item:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -134,7 +126,7 @@ def _get_sprint_item(item_id: UUID, db):
 
 
 def _validate_task_for_sprint(task_id: UUID, sprint, db):
-	task = db.query(Tasks).filter(Tasks.id == task_id).first()
+	task = db.scalar(select(Tasks).where(Tasks.id == task_id))
 	if not task:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -148,7 +140,7 @@ def _validate_task_for_sprint(task_id: UUID, sprint, db):
 
 
 async def create_sprint_item(item_details: CreateSprintItems, payload, db):
-	sprint = db.query(Sprints).filter(Sprints.id == item_details.sprint_id).first()
+	sprint = db.scalar(select(Sprints).where(Sprints.id == item_details.sprint_id))
 	if not sprint:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -158,10 +150,10 @@ async def create_sprint_item(item_details: CreateSprintItems, payload, db):
 	_require_project_manager(payload, sprint.project_id, db)
 	_validate_task_for_sprint(item_details.task_id, sprint, db)
 
-	existing_item = db.query(SprintItems).filter(
+	existing_item = db.scalar(select(SprintItems).where(
 		SprintItems.sprint_id == item_details.sprint_id,
 		SprintItems.task_id == item_details.task_id,
-	).first()
+	))
 	if existing_item:
 		raise HTTPException(
 			status_code=status.HTTP_409_CONFLICT,
@@ -181,7 +173,7 @@ async def create_sprint_item(item_details: CreateSprintItems, payload, db):
 
 async def update_sprint_item(item_id: UUID, item_details: UpdateSprintItems, payload, db):
 	item = _get_sprint_item(item_id, db)
-	current_sprint = db.query(Sprints).filter(Sprints.id == item.sprint_id).first()
+	current_sprint = db.scalar(select(Sprints).where(Sprints.id == item.sprint_id))
 	_require_project_manager(payload, current_sprint.project_id, db)
 
 	update_data = item_details.model_dump(exclude_unset=True)
@@ -193,7 +185,7 @@ async def update_sprint_item(item_id: UUID, item_details: UpdateSprintItems, pay
 
 	target_sprint = current_sprint
 	if 'sprint_id' in update_data:
-		target_sprint = db.query(Sprints).filter(Sprints.id == update_data['sprint_id']).first()
+		target_sprint = db.scalar(select(Sprints).where(Sprints.id == update_data['sprint_id']))
 		if not target_sprint:
 			raise HTTPException(
 				status_code=status.HTTP_404_NOT_FOUND,
@@ -204,11 +196,11 @@ async def update_sprint_item(item_id: UUID, item_details: UpdateSprintItems, pay
 	target_task_id = update_data.get('task_id', item.task_id)
 	_validate_task_for_sprint(target_task_id, target_sprint, db)
 
-	duplicate = db.query(SprintItems).filter(
+	duplicate = db.scalar(select(SprintItems).where(
 		SprintItems.sprint_id == target_sprint.id,
 		SprintItems.task_id == target_task_id,
 		SprintItems.id != item_id,
-	).first()
+	))
 	if duplicate:
 		raise HTTPException(
 			status_code=status.HTTP_409_CONFLICT,
@@ -224,34 +216,30 @@ async def update_sprint_item(item_id: UUID, item_details: UpdateSprintItems, pay
 
 async def delete_sprint_item(item_id: UUID, payload, db):
 	item = _get_sprint_item(item_id, db)
-	sprint = db.query(Sprints).filter(Sprints.id == item.sprint_id).first()
+	sprint = db.scalar(select(Sprints).where(Sprints.id == item.sprint_id))
 	_require_project_manager(payload, sprint.project_id, db)
 	db.delete(item)
 	db.commit()
 	return MessageResponse(message='Sprint item deleted successfully')
 
 async def get_sprintitems(search_id,payload,db):
-	if not payload['id']:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='invalid user credentials, please login!')
-	sprint_item=db.query(SprintItems).filter(SprintItems.title==search_id.replace('+',' ')).first()
+	sprint_item=db.scalar(select(SprintItems).where(SprintItems.title==search_id.replace('+',' ')))
 	if not sprint_item:
 		return _get_sprint_item(UUID(search_id),db)
 
 #get all sprints and sprints item functions starts from here.....
 
 async def get_allsprints(project_id,payload,db):
-	validate_user(payload)
-	sprints=db.query(Sprints).filter(Sprints.project_id==project_id).all()
+	sprints=db.scalars(select(Sprints).where(Sprints.project_id==project_id)).all()
 	if not sprints:
 		return MessageResponse(message='No sprints found')
 	return sprints
 
 async def get_all_sprintitems(sprint_id,payload,db):
-	validate_user(payload)
-	sprint=db.query(Sprints).filter(Sprints.id==sprint_id).first()
+	sprint=db.scalar(select(Sprints).where(Sprints.id==sprint_id))
 	if not sprint:
 		return MessageResponse(message='Invalid sprint, no sprint found')
-	sprint_items=db.query(SprintItems).filter(SprintItems.sprint_id==sprint_id).all()
+	sprint_items=db.scalars(select(SprintItems).where(SprintItems.sprint_id==sprint_id)).all()
 	if not sprint_items:
 		return MessageResponse(message='No items in the sprint')
 	return sprint_items

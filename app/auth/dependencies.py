@@ -70,7 +70,17 @@ def create_access_token(data:dict):
 
 
 #validate_users
-def validate_user(payload):
+def validate_user(payload: dict = Depends(get_current_user)) -> dict:
     if not payload['id']:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid user credentials please login to continue..')
-    
+    return payload
+
+def validate_admin(payload):
+    if payload['role_id'] ==3:
+        return True
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Only an admin can access this route')
+
+def validate_project_manager_admin(payload: dict = Depends(get_current_user)) -> dict:
+    if payload['role_id'] in (1,3):
+        return payload
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Only an Project Manager and Admin can access this route')

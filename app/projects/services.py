@@ -1,9 +1,8 @@
 from app.projects.schemas import CreateProject,UpdateProject,MessageResponse,AddProjectMember,WorkResponse,ProjectResponse,ProjectMemberResponse
-from app.auth.dependencies import get_current_user,validate_user
 from app.projects.models import Projects,Project_members
 from fastapi import HTTPException,status
 from uuid import UUID
-from sqlalchemy import select,func
+from sqlalchemy import delete, func, select, update
 from app.epics.models import Tasks,Epics
 from app.sprints.models import Sprints
 from app.auth.models import Users
@@ -30,73 +29,63 @@ def add_member_helper(details:dict)->Project_members:
 
 #Creating the project only by the current logedin user and role is project manager
 async def create_project(project_details:CreateProject,payload,db):
-    if payload['role_id']==1 or payload['role_id']==3:
-        project_data = project_details.model_dump()
-        project_data['owner_id']=payload['id']
-        project_record = helper_function(project_data)
-        db.add(project_record)
-        db.flush()
-        project_member=helper_add_project_member({"user_id":payload['id'],"project_id":project_record.id,"role":"Project Manager"})
-        db.add(project_member)
-        db.commit()
-        project_data['owner']=payload['user_name']
-        return MessageResponse(message='Project created successfully..')
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Only a Project Manager can create projects')
+    project_data = project_details.model_dump()
+    project_data['owner_id']=payload['id']
+    project_record = helper_function(project_data)
+    db.add(project_record)
+    db.flush()
+    project_member=helper_add_project_member({"user_id":payload['id'],"project_id":project_record.id,"role":"Project Manager"})
+    db.add(project_member)
+    db.commit()
+    project_data['owner']=payload['user_name']
+    return MessageResponse(message='Project created successfully..')
 
 #accessing all projects only by the project manager where the projects is owned by him
 async def get_all_projects(payload,db):
-    if payload['id']:
-        records=[]
-        p_ids=db.execute(select(Project_members.project_id).where(Project_members.user_id==payload['id'])).scalars().all()
-        projects=db.query(Projects).filter(Projects.id.in_(p_ids)).all()
-        if not projects:
-                    return MessageResponse(message="No projects assosiated with the user create one!")
-        for record in projects:
-            total_sprints=db.execute(select(func.count(Sprints.id)).where(Sprints.project_id==record.id)).scalar() or 0
-            total_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==record.id)).scalar() or 0
-            completed_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==record.id,Tasks.status=='completed')).scalar() or 0
-            total_epics=db.execute(select(func.count(Epics.id)).where(Epics.project_id==record.id)).scalar() or 0
-            owner_name=db.execute(select(Users.user_name).where(Users.id==record.owner_id)).scalar()
-            print(owner_name)
-            records.append(ProjectResponse(id=record.id,created_by=owner_name,name=record.name,description=record.description,goal=record.goal,
-                                           status=record.status,start_date=record.start_date,end_date=record.end_date,updated_at=record.updated_at,created_at=record.created_at,
-                                            total_tasks=total_tasks,total_sprints=total_sprints,completed_tasks=completed_tasks,total_epics=total_epics,owner_id=record.owner_id))
-        return records
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Only a Project Manager can access all projects')
+    records=[]
+    p_ids=db.execute(select(Project_members.project_id).where(Project_members.user_id==payload['id'])).scalars().all()
+    projects=db.scalars(select(Projects).where(Projects.id.in_(p_ids))).all()
+    if not projects:
+                return MessageResponse(message="No projects assosiated with the user create one!")
+    for record in projects:
+        total_sprints=db.execute(select(func.count(Sprints.id)).where(Sprints.project_id==record.id)).scalar() or 0
+        total_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==record.id)).scalar() or 0
+        completed_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==record.id,Tasks.status=='completed')).scalar() or 0
+        total_epics=db.execute(select(func.count(Epics.id)).where(Epics.project_id==record.id)).scalar() or 0
+        owner_name=db.execute(select(Users.user_name).where(Users.id==record.owner_id)).scalar()
+        records.append(ProjectResponse(id=record.id,created_by=owner_name,name=record.name,description=record.description,goal=record.goal,
+                                       status=record.status,start_date=record.start_date,end_date=record.end_date,updated_at=record.updated_at,created_at=record.created_at,
+                                        total_tasks=total_tasks,total_sprints=total_sprints,completed_tasks=completed_tasks,total_epics=total_epics,owner_id=record.owner_id))
+    return records
 
 #delete project function project manager and admin are authorized
 async def delete_project(project_id:UUID,payload,db):
-    if payload['role_id']==1 or payload['role_id']==3:
-        record=db.query(Projects).filter(Projects.id==project_id).first()
-        print(record)
-        if record:
-            db.query(Projects).filter(Projects.id==project_id).delete(synchronize_session="fetch")
-            db.commit()
-            return {"message":"deleted successfully"}
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='No such project to delete.')
+    record=db.scalar(select(Projects).where(Projects.id==project_id))
+    print(record)
+    if record:
+        db.execute(delete(Projects).where(Projects.id==project_id).execution_options(synchronize_session="fetch"))
+        db.commit()
+        return {"message":"deleted successfully"}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='No such project to delete.')
 
 
 async def updateproject(project_id:UUID,updatedetails:UpdateProject,payload,db):
-    if payload['role_id']==1 or payload['role_id']==3:
-        record=db.query(Projects).filter(Projects.id==project_id).first()
-        if record:
-            update_data={k:v for k,v in updatedetails.model_dump().items() if v is not None}
-            db.query(Projects).filter(Projects.id==project_id).update(update_data,synchronize_session='fetch')
-            db.commit()
-            print(update_data)
-            return {"message":"Project info updated successfully."}
+    record=db.scalar(select(Projects).where(Projects.id==project_id))
+    if record:
+        update_data={k:v for k,v in updatedetails.model_dump().items() if v is not None}
+        db.execute(update(Projects).where(Projects.id==project_id).values(**update_data).execution_options(synchronize_session='fetch'))
+        db.commit()
+        print(update_data)
+        return {"message":"Project info updated successfully."}
 
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f'No such project exist with id={project_id}')
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager can update project.')
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f'No such project exist with id={project_id}')
 
-async def get_project_by_status(status:str,payload,db):
-    validate_user(payload)
+async def get_project_by_status(project_status:str,payload,db):
     records=[]
     id_s = db.execute(select(Project_members.project_id).where(Project_members.user_id==payload['id'])).scalars().all()
     if not id_s:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="No projects associated with you..")
-    project_details=db.query(Projects).filter(Projects.id.in_(id_s),Projects.status==status).all()
+    project_details=db.scalars(select(Projects).where(Projects.id.in_(id_s),Projects.status==project_status)).all()
     for record in project_details:
                 total_sprints=db.execute(select(func.count(Sprints.id)).where(Sprints.project_id==record.id)).scalar() or 0
                 total_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==record.id)).scalar() or 0
@@ -109,18 +98,17 @@ async def get_project_by_status(status:str,payload,db):
     return records
 
 async def get_project_by_name(project_name:str,payload,db):
-    validate_user(payload)
-    project_details=db.query(Projects).filter(Projects.name==project_name).first()
+    project_details=db.scalar(select(Projects).where(Projects.name==project_name))
     if not project_details:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='No project details found')
-    auth_details = db.query(Project_members).filter(Project_members.user_id==payload['id'],Project_members.project_id==project_details.id).first()
+    auth_details = db.scalar(select(Project_members).where(Project_members.user_id==payload['id'],Project_members.project_id==project_details.id))
     if not auth_details:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project member can access the project details')
     total_sprints=db.execute(select(func.count(Sprints.id)).where(Sprints.project_id==project_details.id)).scalar() or 0
     total_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==project_details.id)).scalar() or 0
     completed_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.project_id==project_details.id,Tasks.status=='Completed')).scalar() or 0
     total_epics=db.execute(select(func.count(Epics.id)).where(Epics.project_id==project_details.id)).scalar() or 0
-    owner_name=db.execute(select(Users.user_name).where(Users.id==project_details.owner_id)).scalar().one()
+    owner_name=db.scalar(select(Users.user_name).where(Users.id==project_details.owner_id))
     project_details=ProjectResponse(id=project_details.id,created_by=owner_name,name=project_details.name,description=project_details.description,goal=project_details.goal,
                                    status=project_details.status,start_date=project_details.start_date,end_date=project_details.end_date,updated_at=project_details.updated_at,created_at=project_details.created_at,
                                     total_tasks=total_tasks,total_sprints=total_sprints,completed_tasks=completed_tasks,total_epics=total_epics,owner_id=project_details.owner_id)
@@ -128,9 +116,7 @@ async def get_project_by_name(project_name:str,payload,db):
 
 
 async def add_project_member(assign_details:AddProjectMember,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager can add project_members')
-    if db.query(Project_members).filter(Project_members.user_id == assign_details.user_id).first():
+    if db.scalar(select(Project_members).where(Project_members.user_id == assign_details.user_id)):
         raise HTTPException(status_code=status.HTTP_208_ALREADY_REPORTED,detail='User is already in the project')
     member_record=add_member_helper(assign_details.model_dump())
     db.add(member_record)
@@ -139,33 +125,28 @@ async def add_project_member(assign_details:AddProjectMember,payload,db):
     return member_record
 
 async def get_project_members(project_id:UUID,payload,db):
-    validate_user(payload)
     result=[]
-    member_records=db.query(Project_members).filter(Project_members.project_id==project_id).all()
+    member_records=db.scalars(select(Project_members).where(Project_members.project_id==project_id)).all()
     if not member_records:
        return MessageResponse(message=f'No members assigned for project_id {project_id}')
     for record in member_records:
-        user_name=db.query(Users).filter(Users.id==record.user_id).first()
+        user_name=db.scalar(select(Users).where(Users.id==record.user_id))
         result.append(ProjectMemberResponse(id=record.id,project_id=record.project_id,user_id=record.user_id,user_name=user_name.user_name,project_role=record.project_role,joined_at=record.joined_at,is_active=record.is_active))
     return result
 
 async def get_projectmember_byrole(role:str,payload,db):
-    validate_user(payload)
-    project_member_records=db.query(Project_members).filter(Project_members.project_role==role).all()
+    project_member_records=db.scalars(select(Project_members).where(Project_members.project_role==role)).all()
     if not project_member_records:
         return MessageResponse(message=f'No users found in project with role {role}')
     return project_member_records
 
 
 async def delete_member(member_id,payload,db):
-    if payload['role_id']!=1 and payload['role_id']!=3:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='only a project manager can add project_members')
-    db.query(Project_members).filter(Project_members.user_id==member_id).delete(synchronize_session="fetch")
+    db.execute(delete(Project_members).where(Project_members.user_id==member_id).execution_options(synchronize_session="fetch"))
     db.commit()
     return MessageResponse(message='Removed project member successfully...')
 
 async def work_details(payload,db):
-    validate_user(payload)
     total_projects=db.execute(select(func.count(Project_members.project_id)).where(Project_members.user_id==payload['id']))
     total_tasks=db.execute(select(func.count(Tasks.id)).where(Tasks.assigned_to==payload['id']))
     total_sprints=db.execute(select(func.count(Sprints.id)).join(Project_members,Sprints.project_id==Project_members.project_id).where(Project_members.user_id==payload['id']))
